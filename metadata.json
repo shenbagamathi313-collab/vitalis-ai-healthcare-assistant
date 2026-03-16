@@ -1,0 +1,7 @@
+{
+  "name": "Vitalis AI Healthcare Companion",
+  "description": "An AI-powered healthcare assistant that provides symptom analysis, lifestyle advice, and emotional support with voice interaction.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
