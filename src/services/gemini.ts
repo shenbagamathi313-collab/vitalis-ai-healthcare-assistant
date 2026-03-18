@@ -54,43 +54,54 @@ export async function getHealthcareAdvice(
     }
   });
 
-  const result = await model;
-  let data: any;
   try {
-    data = JSON.parse(result.text || "{}");
-  } catch (e) {
-    console.error("Failed to parse AI response as JSON:", result.text);
-    data = {
-      text: result.text || "I'm sorry, I couldn't process that request.",
-      emotion: "neutral",
-      language: "unknown"
-    };
-  }
-
-  let audioBase64: string | undefined;
-
-  if (generateAudio && data.text) {
+    const result = await model;
+    let data: any;
     try {
-      const ttsResponse = await ai.models.generateContent({
-        model: "gemini-2.5-flash-preview-tts",
-        contents: [{ parts: [{ text: data.text }] }],
-        config: {
-          responseModalities: [Modality.AUDIO],
-          speechConfig: {
-            voiceConfig: {
-              prebuiltVoiceConfig: { voiceName: mode === 'doctor' ? 'Charon' : 'Kore' },
+      data = JSON.parse(result.text || "{}");
+    } catch (e) {
+      console.error("Failed to parse AI response as JSON:", result.text);
+      data = {
+        text: result.text || "I'm sorry, I couldn't process that request.",
+        emotion: "neutral",
+        language: "unknown"
+      };
+    }
+
+    let audioBase64: string | undefined;
+
+    if (generateAudio && data.text) {
+      try {
+        const ttsResponse = await ai.models.generateContent({
+          model: "gemini-2.5-flash-preview-tts",
+          contents: [{ parts: [{ text: data.text }] }],
+          config: {
+            responseModalities: [Modality.AUDIO],
+            speechConfig: {
+              voiceConfig: {
+                prebuiltVoiceConfig: { voiceName: mode === 'doctor' ? 'Charon' : 'Kore' },
+              },
             },
           },
-        },
-      });
-      audioBase64 = ttsResponse.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
-    } catch (error) {
-      console.error("TTS Error:", error);
+        });
+        audioBase64 = ttsResponse.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+      } catch (error: any) {
+        console.error("TTS Error:", error);
+        // Don't fail the whole request if just TTS fails, but log if it's quota
+        if (error?.message?.includes('429') || error?.message?.includes('RESOURCE_EXHAUSTED')) {
+          console.warn("TTS Quota exceeded");
+        }
+      }
     }
-  }
 
-  return {
-    ...data,
-    audioBase64
-  };
+    return {
+      ...data,
+      audioBase64
+    };
+  } catch (error: any) {
+    if (error?.message?.includes('429') || error?.message?.includes('RESOURCE_EXHAUSTED')) {
+      throw new Error("QUOTA_EXCEEDED");
+    }
+    throw error;
+  }
 }

@@ -181,9 +181,13 @@ export default function App() {
       if (response.audioBase64) {
         playAudio(response.audioBase64);
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      setError("Failed to get response from Vitalis. Please try again.");
+      if (err.message === "QUOTA_EXCEEDED") {
+        setError("Vitalis is currently experiencing high demand (API Quota Exceeded). Please wait a moment and try again.");
+      } else {
+        setError("Failed to get response from Vitalis. Please try again.");
+      }
     } finally {
       setIsLoading(false);
     }
